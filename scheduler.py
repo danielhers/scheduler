@@ -4,9 +4,6 @@
 # A class describing a person, with schedule preferences and assignments
 class Person:
 
-  def __init__(self):
-    self.unavailableDates = []
-
-  def addUnavailableDate(self, date):
-    self.unavailableDates.append(date)
-    print date
+  def __init__(self, name):
+    self.name = name
+    self.unavailableDates = set()

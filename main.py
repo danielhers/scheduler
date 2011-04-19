@@ -16,8 +16,10 @@ class MyFrame(wx.Frame):
         # First, call the base class' __init__ method to create the frame
         wx.Frame.__init__(self, parent, id, title)
 
-        # Add a panel and some controls to display and add people
+        # Add a panel
         panel = wx.Panel(self, -1)
+
+        # Controls to display and add people
         label1 = wx.StaticText(panel, -1, "Add person:")
         label2 = wx.StaticText(panel, -1, "People:")
         self.addPersonCtrl = wx.TextCtrl(panel, -1, "",
@@ -28,8 +30,12 @@ class MyFrame(wx.Frame):
         self.removeCtrl = wx.Button(panel, -1, "Remove")
         self.selectAllCtrl = wx.Button(panel, -1, "Select All")
         self.selectNoneCtrl = wx.Button(panel, -1, "Select None")
+
+        # Controls to view and modify unavailable dates
         self.setUnavailableCtrl = wx.Button(panel, -1, "Set Unavailable")
+        self.setAvailableCtrl = wx.Button(panel, -1, "Set Available")
         self.calCtrl = wx.calendar.CalendarCtrl(panel, -1)
+
         self.panel = panel
 
         # Use some sizers for layout of the widgets
@@ -45,13 +51,19 @@ class MyFrame(wx.Frame):
         peopleSizer.AddSpacer(1)
         peopleSizer.Add(self.selectNoneCtrl, 1, wx.EXPAND)
 
-        calSizer = wx.FlexGridSizer(2, 1, 5, 5)
+        calSizer = wx.FlexGridSizer(3, 1, 5, 5)
         calSizer.Add(self.calCtrl)
-        calSizer.Add(self.setUnavailableCtrl)
+        calCtrlSizer = wx.FlexGridSizer(1, 2, 5, 5)
+        calCtrlSizer.Add(self.setUnavailableCtrl, 1, wx.EXPAND)
+        calCtrlSizer.Add(self.setAvailableCtrl, 1, wx.EXPAND)
+        calSizer.Add(calCtrlSizer)
+        self.datesCtrl = wx.ListBox(panel, -1,
+            style=wx.LB_EXTENDED)
+        calSizer.Add(self.datesCtrl, 1, wx.EXPAND)
 
         border = wx.FlexGridSizer(1,2,10,10)
-        border.Add(peopleSizer, 1, wx.ALIGN_LEFT | wx.ALIGN_CENTRE_VERTICAL | wx.ALL, 5)
-        border.Add(calSizer, 1, wx.ALIGN_RIGHT | wx.ALIGN_CENTRE_VERTICAL | wx.ALL, 5)
+        border.Add(peopleSizer, 1, wx.ALIGN_CENTRE_VERTICAL | wx.ALL, 5)
+        border.Add(calSizer, 1, wx.ALIGN_CENTRE_VERTICAL | wx.ALL, 5)
         panel.SetSizerAndFit(border)
         self.Fit()
 
@@ -59,18 +71,24 @@ class MyFrame(wx.Frame):
 
         # Events
         self.Bind(wx.EVT_TEXT_ENTER, self.OnEnterPerson, self.addPersonCtrl)
+        self.Bind(wx.EVT_LISTBOX, self.OnSelectPeople, self.peopleCtrl)
         self.Bind(wx.EVT_BUTTON, self.OnRemove, self.removeCtrl)
         self.Bind(wx.EVT_BUTTON, self.OnSelectAll, self.selectAllCtrl)
         self.Bind(wx.EVT_BUTTON, self.OnSelectNone, self.selectNoneCtrl)
-        self.Bind(wx.EVT_BUTTON, self.OnAddUnavailable, self.setUnavailableCtrl)
+        self.Bind(wx.EVT_BUTTON, self.OnAddUnavailable,
+          self.setUnavailableCtrl)
+        self.Bind(wx.EVT_BUTTON, self.OnRemoveUnavailable,
+          self.setAvailableCtrl)
 
     # This method is called when enter is pressed when in the Add Person box:
     def OnEnterPerson(self, event):
       self.peopleCtrl.Insert(event.GetString(), 0)
       self.addPersonCtrl.Clear()
-      people.append(scheduler.Person())
-      print "added %s. now there are %d people." % \
+      people.append(scheduler.Person(event.GetString()))
+      print "Added %s. Now there are %d people." % \
         (event.GetString(), self.peopleCtrl.GetCount())
+    def OnSelectPeople(self, event):
+      self.UpdateDates()
     def OnRemove(self, event):
       while self.peopleCtrl.GetSelections():
         self.peopleCtrl.Delete(self.peopleCtrl.GetSelections()[0])
@@ -81,8 +99,22 @@ class MyFrame(wx.Frame):
       for item in range(self.peopleCtrl.GetCount()):
         self.peopleCtrl.Deselect(item)
     def OnAddUnavailable(self, event):
+      dateStr = self.calCtrl.GetDate().FormatDate()
       for item in self.peopleCtrl.GetSelections():
-        people[item].addUnavailableDate(self.calCtrl.GetDate())
+        people[item].unavailableDates.add(dateStr)
+      self.UpdateDates()
+    def OnRemoveUnavailable(self, event):
+      dateStr = self.calCtrl.GetDate().FormatDate()
+      for item in self.peopleCtrl.GetSelections():
+        people[item].unavailableDates.discard(dateStr)
+      self.UpdateDates()
+
+    def UpdateDates(self):
+      dates = set()
+      for item in self.peopleCtrl.GetSelections():
+        dates = dates.union(people[item].unavailableDates)
+      self.datesCtrl.Clear()
+      self.datesCtrl.InsertItems([date for date in dates], 0)
 
 
 
